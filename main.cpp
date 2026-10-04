@@ -1,8 +1,9 @@
-#include <iostream>  // For printing to the console
-#include <fstream>   // For reading the Dataset.csv file
+#include <iostream>  
+#include <fstream>   
 #include <sstream>   // For breaking each line into columns
-#include <vector>    // For storing dynamic arrays of data
-#include <string>    // For handling text data
+#include <vector>    
+#include <string>  
+#include <chrono>  
 
 using namespace std;
 
@@ -45,6 +46,111 @@ double calculateMedian(vector<double> validValues) {
     }
     // Even number of elements: average of the two middle values
     return (validValues[(n - 1) / 2] + validValues[n / 2]) / 2.0;
+}
+
+// 1. Bubble Sort
+void bubbleSort(vector<double>& arr, bool ascending) {
+    int n = arr.size();
+    for (int i = 0; i < n - 1; i++) {
+        bool swapped = false;
+        for (int j = 0; j < n - i - 1; j++) {
+            // Distinct logic for Ascending vs Descending
+            if (ascending ? (arr[j] > arr[j + 1]) : (arr[j] < arr[j + 1])) {
+                swap(arr[j], arr[j + 1]);
+                swapped = true;
+            }
+        }
+        if (!swapped) break;
+    }
+}
+
+// 2. Insertion Sort
+void insertionSort(vector<double>& arr, bool ascending) {
+    int n = arr.size();
+    for (int i = 1; i < n; i++) {
+        double key = arr[i];
+        int j = i - 1;
+        if (ascending) {
+            while (j >= 0 && arr[j] > key) {
+                arr[j + 1] = arr[j];
+                j = j - 1;
+            }
+        } else {
+            while (j >= 0 && arr[j] < key) {
+                arr[j + 1] = arr[j];
+                j = j - 1;
+            }
+        }
+        arr[j + 1] = key;
+    }
+}
+
+// 3. Merge Sort (For the assignment tasks)
+void mergeTask(vector<double>& arr, int left, int mid, int right, bool ascending) {
+    int n1 = mid - left + 1;
+    int n2 = right - mid;
+    vector<double> L(n1), R(n2);
+
+    for (int i = 0; i < n1; i++) L[i] = arr[left + i];
+    for (int j = 0; j < n2; j++) R[j] = arr[mid + 1 + j];
+
+    int i = 0, j = 0, k = left;
+    while (i < n1 && j < n2) {
+        bool condition = ascending ? (L[i] <= R[j]) : (L[i] >= R[j]);
+        if (condition) {
+            arr[k++] = L[i++];
+        } else {
+            arr[k++] = R[j++];
+        }
+    }
+    while (i < n1) arr[k++] = L[i++];
+    while (j < n2) arr[k++] = R[j++];
+}
+
+void mergeSortTask(vector<double>& arr, int left, int right, bool ascending) {
+    if (left >= right) return;
+    int mid = left + (right - left) / 2;
+    mergeSortTask(arr, left, mid, ascending);
+    mergeSortTask(arr, mid + 1, right, ascending);
+    mergeTask(arr, left, mid, right, ascending);
+}
+
+void measureAndPrintPerformance(const vector<double>& dataColumn, const string& attributeName) {
+    cout << "\n=========================================\n";
+    cout << "Attribute: " << attributeName << " (Size: " << dataColumn.size() << ")\n";
+    cout << "=========================================\n";
+
+    // false = Non-Increasing (Descending), true = Non-Decreasing (Ascending)
+    bool orders[] = {false, true}; 
+    string orderNames[] = {"Non-Increasing (Descending)", "Non-Decreasing (Ascending)"};
+
+    for (int i = 0; i < 2; i++) {
+        cout << "--- " << orderNames[i] << " ---\n";
+        
+        // 1. Merge Sort
+        vector<double> temp = dataColumn;
+        auto start = chrono::high_resolution_clock::now();
+        mergeSortTask(temp, 0, temp.size() - 1, orders[i]);
+        auto stop = chrono::high_resolution_clock::now();
+        chrono::duration<double> duration = stop - start;
+        cout << "Merge Sort:     " << duration.count() << " seconds\n";
+
+        // 2. Insertion Sort
+        temp = dataColumn;
+        start = chrono::high_resolution_clock::now();
+        insertionSort(temp, orders[i]);
+        stop = chrono::high_resolution_clock::now();
+        duration = stop - start;
+        cout << "Insertion Sort: " << duration.count() << " seconds\n";
+
+        // 3. Bubble Sort
+        temp = dataColumn;
+        start = chrono::high_resolution_clock::now();
+        bubbleSort(temp, orders[i]);
+        stop = chrono::high_resolution_clock::now();
+        duration = stop - start;
+        cout << "Bubble Sort:    " << duration.count() << " seconds\n";
+    }
 }
 
 vector<vector<double>> parseAndCleanData(const string& filename) {
@@ -144,14 +250,25 @@ int main() {
     const string filename = "Dataset.csv";
     cout << "Reading and cleaning " << filename << "..." << endl;
 
-    // Load the dataset
     vector<vector<double>> numericAttributes = parseAndCleanData(filename);
+    if (numericAttributes.empty()) return 1;
 
-    cout << "Data Preparation Complete!" << endl;
-    cout << "Total numeric attributes found: " << numericAttributes.size() << endl;
-    if (!numericAttributes.empty()) {
-        cout << "Total entries per attribute: " << numericAttributes[0].size() << endl;
+    cout << "Data Preparation Complete! Found " << numericAttributes.size() << " valid attributes.\n";
+
+    // TASK I: Process individual attributes
+    for (size_t i = 0; i < numericAttributes.size(); ++i) {
+        string attrName = "Attribute " + to_string(i + 1);
+        measureAndPrintPerformance(numericAttributes[i], attrName);
+    }
+
+    // TASK II: Combined Vector
+    cout << "\n\nPreparing Task II: Combined Vector...\n";
+    vector<double> combinedVector;
+    for (const auto& col : numericAttributes) {
+        combinedVector.insert(combinedVector.end(), col.begin(), col.end());
     }
     
+    measureAndPrintPerformance(combinedVector, "Task II - Combined Vector");
+
     return 0;
 }
